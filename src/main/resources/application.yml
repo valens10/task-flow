@@ -1,0 +1,98 @@
+spring:
+  config:
+    import: optional:file:.env[.properties]
+  application:
+    name: task-flow
+  jackson:
+    time-zone: UTC
+    serialization:
+      WRITE_DATES_AS_TIMESTAMPS: false
+  mvc:
+    problemdetails:
+      enabled: false
+  main:
+    banner-mode: "off"
+  web:
+    locale: en_US
+  output:
+    ansi:
+      enabled: ALWAYS
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:taskflow}
+    username: ${POSTGRES_USER:taskflow}
+    password: ${POSTGRES_PASSWORD:taskflow}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      pool-name: taskflow-hikari
+      connection-timeout: 30000
+      max-lifetime: 1800000
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc.time_zone: UTC
+        naming:
+          implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyJpaImpl
+          physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+  data:
+    web:
+      pageable:
+        default-page-size: 20
+        max-page-size: 100
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+  allowed-methods: GET,POST,PATCH,PUT,DELETE,OPTIONS
+  allowed-headers: '*'
+  allow-credentials: true
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui
+    operationsSorter: method
+    tagsSorter: alpha
+
+security:
+  jwt:
+    issuer: ${JWT_ISSUER:task-flow}
+    access-secret: ${JWT_ACCESS_SECRET:dev-access-secret-change-me}
+    refresh-secret: ${JWT_REFRESH_SECRET:dev-refresh-secret-change-me}
+    access-ttl-seconds: ${JWT_ACCESS_TTL_SECONDS:900}
+    refresh-ttl-seconds: ${JWT_REFRESH_TTL_SECONDS:2592000}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+logging:
+  level:
+    root: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSS,UTC} %-5level [%logger{36}] - %msg%n"
