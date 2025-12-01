@@ -1,0 +1,22 @@
+# Maven output
+/target
+
+# IDE files
+/.idea
+/.vscode
+*.iml
+
+# OS files
+.DS_Store
+
+# Git
+.git
+.gitignore
+
+# Node (if present)
+node_modules
+
+# Local env files remain on host
+.env.local
+.env.*.local
+

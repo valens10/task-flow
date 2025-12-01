@@ -1,6 +1,34 @@
-version: '3.9'
-
 services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME:-task-flow}-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Ensure the app reaches the DB container by name
+      POSTGRES_HOST: postgres
+      # Inside the Docker network, Postgres always listens on 5432
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-taskflow}
+      POSTGRES_USER: ${POSTGRES_USER:-taskflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-taskflow}
+      SERVER_PORT: ${SERVER_PORT:-8080}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      METRICS_APPLICATION_NAME: ${METRICS_APPLICATION_NAME:-task-flow}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9093
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      tempo:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+
   postgres:
     image: postgres:15.8
     container_name: ${COMPOSE_PROJECT_NAME:-task-flow}-postgres
@@ -20,10 +48,145 @@ services:
       timeout: 5s
       retries: 20
 
-  mailhog:
-    image: mailhog/mailhog:v1.0.1
-    container_name: ${COMPOSE_PROJECT_NAME:-task-flow}-mailhog
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ${COMPOSE_PROJECT_NAME:-task-flow}-prometheus
     restart: unless-stopped
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - app
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ${COMPOSE_PROJECT_NAME:-task-flow}-grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./observability/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./observability/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: ${COMPOSE_PROJECT_NAME:-task-flow}-postgres-exporter
+    restart: unless-stopped
+    environment:
+      - DATA_SOURCE_NAME=postgresql://${POSTGRES_USER:-taskflow}:${POSTGRES_PASSWORD:-taskflow}@postgres:5432/${POSTGRES_DB:-taskflow}?sslmode=disable
+    ports:
+      - "9187:9187"
+    depends_on:
+      - postgres
+
+  loki:
+    image: grafana/loki:3.1.0
+    container_name: ${COMPOSE_PROJECT_NAME:-task-flow}-loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/local-config.yml
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./observability/loki/local-config.yml:/etc/loki/local-config.yml:ro
+      - ./observability/loki/data:/loki
+
+  promtail:
+    image: grafana/promtail:3.1.0
+    container_name: ${COMPOSE_PROJECT_NAME:-task-flow}-promtail
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./observability/promtail/config.yml:/etc/promtail/config.yml:ro
+    depends_on:
+      - loki
+
+  tempo:
+    image: grafana/tempo:2.6.1
+    container_name: ${COMPOSE_PROJECT_NAME:-task-flow}-tempo
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo.yaml"]
+    ports:
+      - "3200:3200"   # HTTP API / query
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    volumes:
+      - ./observability/tempo/tempo.yaml:/etc/tempo.yaml:ro
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    container_name: ${COMPOSE_PROJECT_NAME:-task-flow}-zookeeper
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_logs:/var/lib/zookeeper/log
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: ${COMPOSE_PROJECT_NAME:-task-flow}-kafka
+    restart: unless-stopped
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: ${COMPOSE_PROJECT_NAME:-task-flow}-kafka-ui
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8081:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9093
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+      # Basic Authentication
+      AUTH_TYPE: LOGIN_FORM
+      SPRING_SECURITY_USER_NAME: ${KAFKA_UI_USERNAME:-admin}
+      SPRING_SECURITY_USER_PASSWORD: ${KAFKA_UI_PASSWORD:-changeme}
+    depends_on:
+      - kafka
+      - zookeeper
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: ${COMPOSE_PROJECT_NAME:-task-flow}-mailpit
+    restart: unless-stopped
+    profiles:
+      - mail
     ports:
       - "${MAILHOG_SMTP_PORT:-1025}:1025"
       - "${MAILHOG_HTTP_PORT:-8025}:8025"
@@ -31,3 +194,9 @@ services:
 volumes:
   pg_data:
     name: ${COMPOSE_PROJECT_NAME:-task-flow}_pg_data
+  zookeeper_data:
+    name: ${COMPOSE_PROJECT_NAME:-task-flow}_zookeeper_data
+  zookeeper_logs:
+    name: ${COMPOSE_PROJECT_NAME:-task-flow}_zookeeper_logs
+  kafka_data:
+    name: ${COMPOSE_PROJECT_NAME:-task-flow}_kafka_data

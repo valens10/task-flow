@@ -1,0 +1,52 @@
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+
+common:
+  replication_factor: 1
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  ring:
+    kvstore:
+      store: inmemory
+
+ingester:
+  wal:
+    enabled: true
+    dir: /loki/wal
+  chunk_idle_period: 1h
+  chunk_retain_period: 30s
+
+schema_config:
+  configs:
+    - from: 2024-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: loki_index_
+        period: 24h
+
+storage_config:
+  tsdb_shipper:
+    active_index_directory: /loki/index
+    cache_location: /loki/cache
+  filesystem:
+    directory: /loki/chunks
+
+compactor:
+  working_directory: /loki/compactor
+
+limits_config:
+  retention_period: 0s
+
+ruler:
+  storage:
+    type: local
+    local:
+      directory: /loki/rules

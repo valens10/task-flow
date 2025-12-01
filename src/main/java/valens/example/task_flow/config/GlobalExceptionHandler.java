@@ -3,6 +3,8 @@ package valens.example.task_flow.config;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -56,6 +58,24 @@ public class GlobalExceptionHandler {
         });
         pd.setProperty("errors", errors);
         pd.setType(URI.create("https://httpstatuses.com/400"));
+        return pd;
+    }
+
+    @ExceptionHandler(BadCredentialsException.class)
+    public ProblemDetail handleBadCredentials(BadCredentialsException ex) {
+        ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.UNAUTHORIZED);
+        pd.setTitle("Authentication Failed");
+        pd.setDetail("Invalid email or password");
+        pd.setType(URI.create("https://httpstatuses.com/401"));
+        return pd;
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ProblemDetail handleAuthentication(AuthenticationException ex) {
+        ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.UNAUTHORIZED);
+        pd.setTitle("Authentication Failed");
+        pd.setDetail(ex.getMessage());
+        pd.setType(URI.create("https://httpstatuses.com/401"));
         return pd;
     }
 

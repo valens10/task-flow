@@ -9,8 +9,6 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import valens.example.task_flow.auth.config.JwtAuthenticationFilter;
@@ -31,7 +29,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(reg -> reg
-                        .requestMatchers(HttpMethod.GET, "/actuator/health", "/swagger-ui/**", "/v3/api-docs/**")
+                        .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/prometheus", "/swagger-ui/**", "/v3/api-docs/**")
                         .permitAll()
                         .requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/refresh").permitAll()
                         .requestMatchers("/api/auth/me").authenticated()

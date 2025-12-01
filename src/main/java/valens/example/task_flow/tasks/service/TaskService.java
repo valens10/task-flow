@@ -4,6 +4,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import valens.example.task_flow.messaging.events.TaskCreatedEvent;
+import valens.example.task_flow.messaging.events.TaskDeletedEvent;
+import valens.example.task_flow.messaging.events.TaskUpdatedEvent;
+import valens.example.task_flow.messaging.producer.EventPublisher;
 import valens.example.task_flow.tasks.dto.*;
 import valens.example.task_flow.tasks.entity.Task;
 import valens.example.task_flow.tasks.entity.TaskStatus;
@@ -21,10 +25,12 @@ public class TaskService {
 
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
+    private final EventPublisher eventPublisher;
 
-    public TaskService(TaskRepository taskRepository, UserRepository userRepository) {
+    public TaskService(TaskRepository taskRepository, UserRepository userRepository, EventPublisher eventPublisher) {
         this.taskRepository = taskRepository;
         this.userRepository = userRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     public TaskResponse createTask(CreateTaskRequest request, User reporter) {
@@ -44,6 +50,18 @@ public class TaskService {
         }
 
         Task savedTask = taskRepository.save(task);
+        
+        // Publish TaskCreated event
+        TaskCreatedEvent event = new TaskCreatedEvent();
+        event.setTaskId(savedTask.getId());
+        event.setTitle(savedTask.getTitle());
+        event.setReporterId(savedTask.getReporter().getId());
+        event.setAssigneeId(savedTask.getAssignee() != null ? savedTask.getAssignee().getId() : null);
+        event.setPriority(savedTask.getPriority() != null ? savedTask.getPriority().name() : null);
+        event.setDueDate(savedTask.getDueDate() != null ? savedTask.getDueDate().atStartOfDay().toInstant(java.time.ZoneOffset.UTC) : null);
+        event.setCreatedAt(savedTask.getCreatedAt());
+        eventPublisher.publish("task-flow.task.created", savedTask.getId().toString(), event);
+        
         return mapToTaskResponse(savedTask);
     }
 
@@ -81,14 +99,32 @@ public class TaskService {
 
         task.setUpdatedAt(java.time.Instant.now());
         Task updatedTask = taskRepository.save(task);
+        
+        // Publish TaskUpdated event
+        TaskUpdatedEvent event = new TaskUpdatedEvent();
+        event.setTaskId(updatedTask.getId());
+        event.setTitle(updatedTask.getTitle());
+        event.setStatus(updatedTask.getStatus().name());
+        event.setAssigneeId(updatedTask.getAssignee() != null ? updatedTask.getAssignee().getId() : null);
+        event.setPriority(updatedTask.getPriority() != null ? updatedTask.getPriority().name() : null);
+        event.setDueDate(updatedTask.getDueDate() != null ? updatedTask.getDueDate().atStartOfDay().toInstant(java.time.ZoneOffset.UTC) : null);
+        event.setUpdatedAt(updatedTask.getUpdatedAt());
+        eventPublisher.publish("task-flow.task.updated", updatedTask.getId().toString(), event);
+        
         return mapToTaskResponse(updatedTask);
     }
 
-    public void deleteTask(UUID id) {
+    public void deleteTask(UUID id, User deletedBy) {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Task not found"));
         task.setDeleted(true);
         taskRepository.save(task);
+        
+        // Publish TaskDeleted event
+        TaskDeletedEvent event = new TaskDeletedEvent();
+        event.setTaskId(task.getId());
+        event.setDeletedBy(deletedBy != null ? deletedBy.getId() : null);
+        eventPublisher.publish("task-flow.task.deleted", task.getId().toString(), event);
     }
 
     @Transactional(readOnly = true)
