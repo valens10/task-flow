@@ -101,27 +101,36 @@ GRANT ALL PRIVILEGES ON DATABASE taskflow TO taskflow;
 The application uses environment variables for configuration. Create a `.env` file in the root directory:
 
 ```env
-# Database Configuration
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_DB=taskflow
-POSTGRES_USER=taskflow
-POSTGRES_PASSWORD=taskflow
+COMPOSE_PROJECT_NAME=task-flow
 
-# Server Configuration
+# Server
 SERVER_PORT=8080
 
-# CORS Configuration
+# Database
+POSTGRES_HOST=localhost
+POSTGRES_DB=taskflow
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=admin
+POSTGRES_PORT=5433
+
+# CORS
 CORS_ALLOWED_ORIGINS=http://localhost:3000
 
-# JWT Configuration (optional - defaults provided)
-JWT_SECRET=your-super-secret-jwt-key-here-make-it-long-and-secure
-JWT_ACCESS_TTL_SECONDS=3600
-JWT_REFRESH_TTL_SECONDS=604800
+# JWT (use strong, 32+ chars for HS256)
+JWT_ISSUER=task-flow
+JWT_ACCESS_SECRET=change-me-to-a-strong-32+char-secret
+JWT_REFRESH_SECRET=change-me-to-a-strong-32+char-secret
+JWT_ACCESS_TTL_SECONDS=900
+JWT_REFRESH_TTL_SECONDS=2592000
 
-# Kafka UI Authentication (for production)
-KAFKA_UI_USERNAME=admin
-KAFKA_UI_PASSWORD=your-secure-password-here
+#Kafka UI Config
+KAFKA_UI_USERNAME='kafka'
+KAFKA_UI_PASSWORD='changeit'
+
+
+# Optional (explicitly set Mailhog ports)
+# MAILHOG_SMTP_PORT=1025
+# MAILHOG_HTTP_PORT=8025
 ```
 
 ### 4. Build and Run

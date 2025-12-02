@@ -1,38 +1,35 @@
-target/
-.idea/
-.project
-.classpath
-.settings/
-.mvn/wrapper/maven-wrapper.jar
-**/.DS_Store
-**/Thumbs.db
-*.iml
-/.env
-/.env.*
-/.vscode/
-/.factorypath
-HELP.md
+# Maven
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
+# IDE
+.idea/
 .project
-.settings
+.classpath
+.settings/
+*.iml
+*.iws
+*.ipr
+.vscode/
+
+# OS
+**/.DS_Store
+**/Thumbs.db
+
+# Environment Variables
+.env
+.env.*
+!.env.example
+
+# STS / Spring Tools
+.apt_generated
+.factorypath
 .springBeans
 .sts4-cache
 
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
-
-### NetBeans ###
+# NetBeans
 /nbproject/private/
 /nbbuild/
 /dist/
@@ -42,5 +39,27 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
-### VS Code ###
-.vscode/
+# Observability Data (Runtime Data - DO NOT COMMIT)
+# Loki data files
+observability/loki/data/
+# Prometheus data (if any)
+observability/prometheus/data/
+# Tempo data (if any)
+observability/tempo/data/
+tempo/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Application Runtime Config (local overrides)
+application-local.yml
+application-dev.yml
+application-prod.yml
+
+# Help files
+HELP.md
