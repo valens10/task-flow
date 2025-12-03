@@ -290,6 +290,113 @@ docker build -t task-flow:latest .
 docker run -p 8080:8080 --env-file .env task-flow:latest
 ```
 
+## 🌐 Accessing Monitoring Tools & Services
+
+When running the application with Docker Compose, all monitoring tools and services are available at the following URLs:
+
+### Application Endpoints
+
+| Service | URL | Description |
+|---------|-----|-------------|
+| **Application** | `http://localhost:8080` | Main application API |
+| **Swagger UI** | `http://localhost:8080/swagger-ui` | Interactive API documentation |
+| **API Docs (JSON)** | `http://localhost:8080/v3/api-docs` | OpenAPI 3.0 specification |
+| **Health Check** | `http://localhost:8080/actuator/health` | Application health status |
+| **Metrics** | `http://localhost:8080/actuator/prometheus` | Prometheus metrics endpoint |
+
+### Kafka & Messaging
+
+| Service | URL | Credentials | Description |
+|---------|-----|-------------|-------------|
+| **Kafka UI** | `http://localhost:8081` | Username: `kafka` (default)<br>Password: `changeit` (default) | Web UI for managing Kafka topics, messages, and consumer groups |
+| **Kafka Broker** | `localhost:9092` | N/A | Kafka broker for external clients |
+| **Zookeeper** | `localhost:2181` | N/A | Zookeeper service for Kafka coordination |
+
+**Note**: Update `KAFKA_UI_USERNAME` and `KAFKA_UI_PASSWORD` in your `.env` file for production use.
+
+### Observability Stack
+
+| Service | URL | Credentials | Description |
+|---------|-----|-------------|-------------|
+| **Grafana** | `http://localhost:3000` | Username: `admin`<br>Password: `admin` | Visualization and dashboards for metrics, logs, and traces |
+| **Prometheus** | `http://localhost:9090` | N/A | Metrics collection and querying |
+| **Loki** | `http://localhost:3100` | N/A | Log aggregation system |
+| **Tempo** | `http://localhost:3200` | N/A | Distributed tracing backend |
+| **Postgres Exporter** | `http://localhost:9187` | N/A | PostgreSQL metrics exporter |
+
+### Email Testing (Optional)
+
+| Service | URL | Description |
+|---------|-----|-------------|
+| **Mailpit Web UI** | `http://localhost:8025` | Email testing interface (when mail profile is active) |
+| **Mailpit SMTP** | `localhost:1025` | SMTP server for sending test emails |
+
+**Note**: Mailpit is only available when started with the `mail` profile:
+```bash
+docker compose --profile mail up -d
+```
+
+### Quick Access Guide
+
+1. **Start all services**:
+   ```bash
+   docker compose up -d
+   ```
+
+2. **Access Grafana Dashboards**:
+   - Open `http://localhost:3000`
+   - Login with `admin`/`admin`
+   - Pre-configured dashboards are available:
+     - Spring Boot Observability
+     - JVM Micrometer
+     - PostgreSQL Metrics
+
+3. **View Kafka Topics and Messages**:
+   - Open `http://localhost:8081`
+   - Login with credentials from your `.env` file
+   - Browse topics, view messages, and monitor consumer groups
+
+4. **Query Metrics in Prometheus**:
+   - Open `http://localhost:9090`
+   - Use PromQL to query application metrics
+   - Example: `http_server_requests_seconds_count{application="task-flow"}`
+
+5. **View Application Logs**:
+   - Logs are automatically collected by Promtail and sent to Loki
+   - Access logs through Grafana's Explore view
+   - Select Loki as the data source
+
+6. **Trace Requests**:
+   - Distributed traces are sent to Tempo
+   - View traces in Grafana's Explore view
+   - Select Tempo as the data source
+
+### Default Credentials
+
+⚠️ **Security Warning**: The default credentials are for development only. Always change them in production!
+
+- **Grafana**: `admin` / `admin`
+- **Kafka UI**: Set via `KAFKA_UI_USERNAME` and `KAFKA_UI_PASSWORD` in `.env` (default: `kafka` / `changeit`)
+
+### Service Dependencies
+
+The services have the following startup order with their versions:
+
+1. **PostgreSQL** (v15.8) → Database
+2. **Zookeeper** (v7.6.0 - Confluent Platform) → Kafka coordination
+3. **Kafka** (v7.6.0 - Confluent Platform) → Message broker
+4. **Tempo** (v2.6.1) → Distributed tracing backend
+5. **Application** (Spring Boot 3.4.9, Java 21) → Main Spring Boot app
+6. **Prometheus** (latest) → Metrics collection
+7. **Grafana** (latest) → Visualization and dashboards
+8. **Loki** (v3.1.0) → Log aggregation system
+9. **Promtail** (v3.1.0) → Log shipping agent
+10. **Kafka UI** (latest) → Kafka management interface
+11. **Postgres Exporter** (latest) → PostgreSQL metrics exporter
+12. **Mailpit** (latest) → Email testing tool (optional, mail profile)
+
+All dependencies are automatically handled by Docker Compose.
+
 ## 📁 Project Structure
 
 ```
