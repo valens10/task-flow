@@ -292,6 +292,8 @@ docker run -p 8080:8080 --env-file .env task-flow:latest
 
 ## 🌐 Accessing Monitoring Tools & Services
 
+> 📖 **For a quick reference guide, see [OBSERVABILITY_GUIDE.md](OBSERVABILITY_GUIDE.md)**
+
 When running the application with Docker Compose, all monitoring tools and services are available at the following URLs:
 
 ### Application Endpoints
