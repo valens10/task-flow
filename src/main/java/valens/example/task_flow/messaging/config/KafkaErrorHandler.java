@@ -11,6 +11,7 @@ import org.springframework.kafka.listener.CommonErrorHandler;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -79,15 +80,15 @@ public class KafkaErrorHandler implements CommonErrorHandler {
         
         try {
             // Create DLQ message with original data + error info
-            Map<String, Object> dlqMessage = Map.of(
-                "originalTopic", record.topic(),
-                "originalPartition", record.partition(),
-                "originalOffset", record.offset(),
-                "originalKey", record.key() != null ? record.key().toString() : null,
-                "originalValue", record.value(),
-                "error", exception.getMessage(),
-                "errorClass", exception.getClass().getName()
-            );
+            // Use HashMap instead of Map.of() to allow null values
+            Map<String, Object> dlqMessage = new HashMap<>();
+            dlqMessage.put("originalTopic", record.topic());
+            dlqMessage.put("originalPartition", record.partition());
+            dlqMessage.put("originalOffset", record.offset());
+            dlqMessage.put("originalKey", record.key() != null ? record.key().toString() : null);
+            dlqMessage.put("originalValue", record.value());
+            dlqMessage.put("error", exception.getMessage() != null ? exception.getMessage() : "No error message");
+            dlqMessage.put("errorClass", exception.getClass().getName());
             
             kafkaTemplate.send(dlqTopic, record.key() != null ? record.key().toString() : "null", dlqMessage);
             log.error("Sent failed message to DLQ: topic={}, originalTopic={}, partition={}, offset={}", 

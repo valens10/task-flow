@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.hibernate.annotations.Where;
+import org.hibernate.annotations.SQLRestriction;
 import valens.example.task_flow.users.entity.User;
 
 import java.time.Instant;
@@ -17,7 +17,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "tasks")
-@Where(clause = "deleted = false")
+@SQLRestriction("deleted = false")
 public class Task {
 
     @Id
@@ -63,7 +63,7 @@ public class Task {
     private boolean deleted = false;
 
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @Where(clause = "deleted = false")
+    @SQLRestriction("deleted = false")
     private List<TaskComment> comments = new ArrayList<>();
 
     // Constructors

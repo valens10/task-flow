@@ -2,18 +2,16 @@ package valens.example.task_flow.tasks.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.hibernate.annotations.Where;
+    import org.hibernate.annotations.SQLRestriction;
 import valens.example.task_flow.users.entity.User;
 
 import java.time.Instant;
-import java.util.UUID;
 
 @Entity
 @Table(name = "task_comments")
-@Where(clause = "deleted = false")
+@SQLRestriction("deleted = false")
 public class TaskComment {
 
     @Id

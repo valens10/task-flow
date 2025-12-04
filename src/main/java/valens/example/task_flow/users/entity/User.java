@@ -5,8 +5,8 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.hibernate.annotations.Where;
 
 import java.time.Instant;
 import java.util.Set;
@@ -14,7 +14,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "users")
-@Where(clause = "deleted = false")
+@SQLRestriction("deleted = false")
 public class User {
 
     @Id

@@ -44,7 +44,7 @@ Through building this project, the goal is to gain practical experience with pro
 - **Backend**: Spring Boot 3.x, Spring Security, Spring Data JPA
 - **Database**: PostgreSQL with Flyway migrations
 - **Authentication**: JWT (JSON Web Tokens) with refresh tokens
-- **Messaging**: Apache Kafka with Zookeeper
+- **Messaging**: Apache Kafka (KRaft mode - no Zookeeper required)
 - **Observability**: 
   - Prometheus (metrics)
   - Grafana (visualization)
@@ -55,13 +55,13 @@ Through building this project, the goal is to gain practical experience with pro
 - **Documentation**: Swagger/OpenAPI 3
 - **Containerization**: Docker, Docker Compose
 - **Build Tool**: Maven
-- **Java Version**: 17+
+- **Java Version**: 21 (LTS)
 
 ## 📋 Prerequisites
 
 Before running the application, ensure you have the following installed:
 
-- **Java 17 or higher**
+- **Java 21 (LTS) or higher**
 - **Maven 3.6+**
 - **PostgreSQL 12+**
 - **Git**
@@ -309,10 +309,11 @@ When running the application with Docker Compose, all monitoring tools and servi
 | Service | URL | Credentials | Description |
 |---------|-----|-------------|-------------|
 | **Kafka UI** | `http://localhost:8081` | Username: `kafka` (default)<br>Password: `changeit` (default) | Web UI for managing Kafka topics, messages, and consumer groups |
-| **Kafka Broker** | `localhost:9092` | N/A | Kafka broker for external clients |
-| **Zookeeper** | `localhost:2181` | N/A | Zookeeper service for Kafka coordination |
+| **Kafka Broker** | `localhost:9092` | N/A | Kafka broker for external clients (KRaft mode) |
 
-**Note**: Update `KAFKA_UI_USERNAME` and `KAFKA_UI_PASSWORD` in your `.env` file for production use.
+**Note**: 
+- Kafka is running in **KRaft mode** (no Zookeeper required) - simpler architecture and better performance
+- Update `KAFKA_UI_USERNAME` and `KAFKA_UI_PASSWORD` in your `.env` file for production use
 
 ### Observability Stack
 
@@ -383,17 +384,16 @@ docker compose --profile mail up -d
 The services have the following startup order with their versions:
 
 1. **PostgreSQL** (v15.8) → Database
-2. **Zookeeper** (v7.6.0 - Confluent Platform) → Kafka coordination
-3. **Kafka** (v7.6.0 - Confluent Platform) → Message broker
-4. **Tempo** (v2.6.1) → Distributed tracing backend
-5. **Application** (Spring Boot 3.4.9, Java 21) → Main Spring Boot app
-6. **Prometheus** (latest) → Metrics collection
-7. **Grafana** (latest) → Visualization and dashboards
-8. **Loki** (v3.1.0) → Log aggregation system
-9. **Promtail** (v3.1.0) → Log shipping agent
-10. **Kafka UI** (latest) → Kafka management interface
-11. **Postgres Exporter** (latest) → PostgreSQL metrics exporter
-12. **Mailpit** (latest) → Email testing tool (optional, mail profile)
+2. **Kafka** (v7.6.0 - Confluent Platform, KRaft mode) → Message broker (no Zookeeper required)
+3. **Tempo** (v2.6.1) → Distributed tracing backend
+4. **Application** (Spring Boot 3.4.9, Java 21) → Main Spring Boot app
+5. **Prometheus** (latest) → Metrics collection
+6. **Grafana** (latest) → Visualization and dashboards
+7. **Loki** (v3.1.0) → Log aggregation system
+8. **Promtail** (v3.1.0) → Log shipping agent
+9. **Kafka UI** (latest) → Kafka management interface
+10. **Postgres Exporter** (latest) → PostgreSQL metrics exporter
+11. **Mailpit** (latest) → Email testing tool (optional, mail profile)
 
 All dependencies are automatically handled by Docker Compose.
 
@@ -654,8 +654,8 @@ Kafka UI is available for managing and monitoring your Kafka cluster. It's prote
 # Start all services including Kafka UI
 docker compose up -d
 
-# Or start just Kafka UI and dependencies
-docker compose up -d zookeeper kafka kafka-ui
+# Or start just Kafka UI and dependencies (KRaft mode - no Zookeeper needed)
+docker compose up -d kafka kafka-ui
 ```
 
 ### 🔍 Monitoring & Analytics

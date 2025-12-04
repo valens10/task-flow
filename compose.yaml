@@ -121,38 +121,33 @@ services:
     volumes:
       - ./observability/tempo/tempo.yaml:/etc/tempo.yaml:ro
 
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.6.0
-    container_name: ${COMPOSE_PROJECT_NAME:-task-flow}-zookeeper
-    restart: unless-stopped
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "2181:2181"
-    volumes:
-      - zookeeper_data:/var/lib/zookeeper/data
-      - zookeeper_logs:/var/lib/zookeeper/log
-
   kafka:
     image: confluentinc/cp-kafka:7.6.0
     container_name: ${COMPOSE_PROJECT_NAME:-task-flow}-kafka
     restart: unless-stopped
-    depends_on:
-      - zookeeper
     ports:
       - "9092:9092"
       - "9093:9093"
+      - "29093:29093"
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:9093
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      # KRaft mode configuration (no Zookeeper needed)
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_NODE_ID: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:29093"
+      CLUSTER_ID: "tRedIl0UT1i9fuG4-q7avA"
+      # Listeners configuration
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:29093,PLAINTEXT_INTERNAL://0.0.0.0:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:9093"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT_INTERNAL"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      # Topic and replication settings
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      # KRaft metadata settings
+      KAFKA_METADATA_LOG_DIR: "/var/lib/kafka/metadata"
     volumes:
       - kafka_data:/var/lib/kafka/data
     healthcheck:
@@ -172,14 +167,13 @@ services:
     environment:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9093
-      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+      # KRaft mode - no Zookeeper needed
       # Basic Authentication
       AUTH_TYPE: LOGIN_FORM
       SPRING_SECURITY_USER_NAME: ${KAFKA_UI_USERNAME:-admin}
       SPRING_SECURITY_USER_PASSWORD: ${KAFKA_UI_PASSWORD:-changeme}
     depends_on:
       - kafka
-      - zookeeper
 
   mailpit:
     image: axllent/mailpit:latest
@@ -194,9 +188,5 @@ services:
 volumes:
   pg_data:
     name: ${COMPOSE_PROJECT_NAME:-task-flow}_pg_data
-  zookeeper_data:
-    name: ${COMPOSE_PROJECT_NAME:-task-flow}_zookeeper_data
-  zookeeper_logs:
-    name: ${COMPOSE_PROJECT_NAME:-task-flow}_zookeeper_logs
   kafka_data:
     name: ${COMPOSE_PROJECT_NAME:-task-flow}_kafka_data
